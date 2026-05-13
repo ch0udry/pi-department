@@ -57,10 +57,10 @@ Each department lives at `~/.pi/profiles/pi-<name>/` and contains:
     └── agent/
         ├── settings.json    # Copied from main agent
         ├── models.json      # Copied from main agent
-        ├── orchestrator.json
+        ├── orchestrator.json # Copied from main agent
         ├── auth.json        # Symlinked to main (or isolated)
+        ├── extensions/      # Copied from main agent
         ├── skills/          # Copied from main agent
-        ├── extensions/      # Fresh — add department-specific extensions
         ├── agents/          # Fresh
         ├── sessions/        # Fresh — separate session history
         ├── memory/          # Fresh — separate memory

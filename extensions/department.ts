@@ -29,7 +29,6 @@ const SKIP_ENTRIES = new Set([
   ".extmgr-cache",
   "bin",
   "git",
-  "extensions",
   "skills",
   "agents",
   "context-prune",
@@ -136,7 +135,7 @@ export default function (pi: ExtensionAPI) {
       }
 
       // 4. Create empty subdirectories for department-specific data
-      for (const sub of ["extensions", "skills", "agents", "sessions", "memory", "git"]) {
+      for (const sub of ["skills", "agents", "sessions", "memory", "git"]) {
         mkdirSync(join(agentDir, sub), { recursive: true });
       }
 
@@ -180,10 +179,10 @@ exec pi "$@"
         ``,
         `  Copied from main agent:`,
         `    • settings.json, models.json, orchestrator.json`,
+        `    • extensions/`,
         `    • skills/`,
         ``,
         `  Created fresh for this department:`,
-        `    • extensions/  (add department-specific extensions here)`,
         `    • agents/      (add department-specific agents here)`,
         `    • sessions/    (separate session history)`,
         `    • memory/      (separate memory store)`,
