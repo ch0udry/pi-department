@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  rmSync,
   symlinkSync,
   writeFileSync,
   cpSync,
@@ -152,6 +153,82 @@ exec pi "$@"
         `    • sessions/`,
         `    • memory/`,
         `    • git/`,
+        ``,
+      ].join("\n");
+
+      notify(summary);
+    },
+  });
+
+  pi.registerCommand("departmentd", {
+    description:
+      "Delete a Pi profile agent (department) completely. " +
+      "Usage: /departmentd <name>",
+    handler: async (args: string, ctx) => {
+      const name = args.trim();
+
+      if (!name) {
+        const usage = "Usage: /departmentd <name>\n  <name>  Department name (e.g., 'dev' deletes 'pi-dev')";
+        if (ctx.hasUI) ctx.ui.notify(usage, "error");
+        else log(usage);
+        return;
+      }
+
+      if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+        const msg = `Invalid department name "${name}". Use only letters, numbers, hyphens, and underscores.`;
+        if (ctx.hasUI) ctx.ui.notify(msg, "error");
+        else log(msg);
+        return;
+      }
+
+      const agentName = `pi-${name}`;
+      const profileDir = join(PROFILES_DIR, agentName);
+      const binPath = join(LOCAL_BIN, agentName);
+
+      if (!existsSync(profileDir) && !existsSync(binPath)) {
+        const msg = `Department "${agentName}" not found.`;
+        if (ctx.hasUI) ctx.ui.notify(msg, "error");
+        else log(msg);
+        return;
+      }
+
+      if (ctx.hasUI) {
+        const ok = await ctx.ui.confirm(
+          "Delete department?",
+          `This will permanently delete "${agentName}" and all its sessions, memory, and data.`,
+        );
+        if (!ok) {
+          ctx.ui.notify("Cancelled.", "info");
+          return;
+        }
+      }
+
+      const notify = (msg: string) => {
+        if (ctx.hasUI) ctx.ui.notify(msg, "info");
+        else log(msg);
+      };
+
+      notify(`Deleting department "${agentName}"...`);
+
+      let deleted = 0;
+
+      if (existsSync(profileDir)) {
+        rmSync(profileDir, { recursive: true, force: true });
+        deleted++;
+      }
+
+      if (existsSync(binPath)) {
+        rmSync(binPath, { force: true });
+        deleted++;
+      }
+
+      const summary = [
+        `━━━ Department Deleted: ${agentName} ━━━`,
+        ``,
+        `  Removed profile:  ${profileDir}`,
+        `  Removed launcher: ${binPath}`,
+        ``,
+        `  ✓ ${agentName} has been completely removed.`,
         ``,
       ].join("\n");
 
