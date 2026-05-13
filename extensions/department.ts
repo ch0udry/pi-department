@@ -37,6 +37,11 @@ const SKIP_ENTRIES = new Set([
   ".vstack-update-cache.json",
 ]);
 
+function log(msg: string) {
+  // Fallback output for non-interactive modes
+  process.stdout.write(msg + "\n");
+}
+
 export default function (pi: ExtensionAPI) {
   pi.registerCommand("department", {
     description:
@@ -49,21 +54,26 @@ export default function (pi: ExtensionAPI) {
       const isolatedAuth = parts.includes("--isolated-auth");
 
       if (!name) {
-        ctx.ui.notify(
+        const usage =
           "Usage: /department <name> [--isolated-auth]\n" +
-            "  <name>            Department name (e.g., 'dev' → creates 'pi-dev')\n" +
-            "  --isolated-auth  Don't symlink auth; create an isolated auth file",
-          "error",
-        );
+          "  <name>            Department name (e.g., 'dev' → creates 'pi-dev')\n" +
+          "  --isolated-auth  Don't symlink auth; create an isolated auth file";
+        if (ctx.hasUI) {
+          ctx.ui.notify(usage, "error");
+        } else {
+          log(usage);
+        }
         return;
       }
 
       // Validate name: alphanumeric, hyphens, underscores only
       if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-        ctx.ui.notify(
-          `Invalid department name "${name}". Use only letters, numbers, hyphens, and underscores.`,
-          "error",
-        );
+        const msg = `Invalid department name "${name}". Use only letters, numbers, hyphens, and underscores.`;
+        if (ctx.hasUI) {
+          ctx.ui.notify(msg, "error");
+        } else {
+          log(msg);
+        }
         return;
       }
 
@@ -74,19 +84,27 @@ export default function (pi: ExtensionAPI) {
 
       // Check if already exists
       if (existsSync(profileDir)) {
-        const ok = await ctx.ui.confirm(
-          "Overwrite?",
-          `Department "${agentName}" already exists at ${profileDir}. Overwrite?`,
-        );
-        if (!ok) {
-          ctx.ui.notify("Cancelled.", "info");
+        if (ctx.hasUI) {
+          const ok = await ctx.ui.confirm(
+            "Overwrite?",
+            `Department "${agentName}" already exists at ${profileDir}. Overwrite?`,
+          );
+          if (!ok) {
+            ctx.ui.notify("Cancelled.", "info");
+            return;
+          }
+        } else {
+          log(`Department "${agentName}" already exists. Use --force to overwrite.`);
           return;
         }
-        // Clean up for fresh copy
-        cpSync(profileDir, profileDir + ".bak", { recursive: true, force: true });
       }
 
-      ctx.ui.notify(`Creating department "${agentName}"...`, "info");
+      const notify = (msg: string) => {
+        if (ctx.hasUI) ctx.ui.notify(msg, "info");
+        else log(msg);
+      };
+
+      notify(`Creating department "${agentName}"...`);
 
       // 1. Create the profile directory structure
       mkdirSync(agentDir, { recursive: true });
@@ -172,7 +190,7 @@ exec pi "$@"
         ``,
       ].join("\n");
 
-      ctx.ui.notify(summary, "info");
+      notify(summary);
     },
   });
 }
