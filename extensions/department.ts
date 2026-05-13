@@ -3,9 +3,7 @@ import { execSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
-  statSync,
   symlinkSync,
   writeFileSync,
   cpSync,
@@ -17,27 +15,7 @@ const PI_AGENT_DIR = join(homedir(), ".pi", "agent");
 const PROFILES_DIR = join(homedir(), ".pi", "profiles");
 const LOCAL_BIN = join(homedir(), ".local", "bin");
 
-/**
- * Items to skip when copying from the source agent directory.
- * These are either large runtime caches, session-specific data,
- * or things we recreate fresh for each department.
- */
-const SKIP_ENTRIES = new Set([
-  "sessions",
-  "memory",
-  "projects-memory",
-  ".extmgr-cache",
-  "bin",
-  "git",
-  "skills",
-  "agents",
-  "context-prune",
-  "pi-crash.log",
-  ".vstack-update-cache.json",
-]);
-
 function log(msg: string) {
-  // Fallback output for non-interactive modes
   process.stdout.write(msg + "\n");
 }
 
@@ -47,7 +25,6 @@ export default function (pi: ExtensionAPI) {
       "Create a new Pi profile agent (department) from the current agent config. " +
       "Usage: /department <name> [--isolated-auth]",
     handler: async (args: string, ctx) => {
-      // Parse args: extract name and flags
       const parts = args.trim().split(/\s+/);
       const name = parts.find((p) => !p.startsWith("--")) ?? "";
       const isolatedAuth = parts.includes("--isolated-auth");
@@ -57,22 +34,15 @@ export default function (pi: ExtensionAPI) {
           "Usage: /department <name> [--isolated-auth]\n" +
           "  <name>            Department name (e.g., 'dev' → creates 'pi-dev')\n" +
           "  --isolated-auth  Don't symlink auth; create an isolated auth file";
-        if (ctx.hasUI) {
-          ctx.ui.notify(usage, "error");
-        } else {
-          log(usage);
-        }
+        if (ctx.hasUI) ctx.ui.notify(usage, "error");
+        else log(usage);
         return;
       }
 
-      // Validate name: alphanumeric, hyphens, underscores only
       if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
         const msg = `Invalid department name "${name}". Use only letters, numbers, hyphens, and underscores.`;
-        if (ctx.hasUI) {
-          ctx.ui.notify(msg, "error");
-        } else {
-          log(msg);
-        }
+        if (ctx.hasUI) ctx.ui.notify(msg, "error");
+        else log(msg);
         return;
       }
 
@@ -81,7 +51,6 @@ export default function (pi: ExtensionAPI) {
       const agentDir = join(profileDir, ".pi", "agent");
       const binPath = join(LOCAL_BIN, agentName);
 
-      // Check if already exists
       if (existsSync(profileDir)) {
         if (ctx.hasUI) {
           const ok = await ctx.ui.confirm(
@@ -93,7 +62,7 @@ export default function (pi: ExtensionAPI) {
             return;
           }
         } else {
-          log(`Department "${agentName}" already exists. Use --force to overwrite.`);
+          log(`Department "${agentName}" already exists.`);
           return;
         }
       }
@@ -108,20 +77,15 @@ export default function (pi: ExtensionAPI) {
       // 1. Create the profile directory structure
       mkdirSync(agentDir, { recursive: true });
 
-      // 2. Copy config/resources from ~/.pi/agent (top-level files only)
-      const sourceEntries = readdirSync(PI_AGENT_DIR);
-      for (const entry of sourceEntries) {
-        const srcPath = join(PI_AGENT_DIR, entry);
-        const dstPath = join(agentDir, entry);
+      // 2. Copy only skills/ and models.json from the main agent
+      const skillsSrc = join(PI_AGENT_DIR, "skills");
+      if (existsSync(skillsSrc)) {
+        cpSync(skillsSrc, join(agentDir, "skills"), { recursive: true, force: true });
+      }
 
-        if (SKIP_ENTRIES.has(entry)) continue;
-        if (entry === "auth.json") continue; // handled separately
-
-        if (statSync(srcPath).isDirectory()) {
-          cpSync(srcPath, dstPath, { recursive: true, force: true });
-        } else {
-          writeFileSync(dstPath, readFileSync(srcPath));
-        }
+      const modelsSrc = join(PI_AGENT_DIR, "models.json");
+      if (existsSync(modelsSrc)) {
+        writeFileSync(join(agentDir, "models.json"), readFileSync(modelsSrc));
       }
 
       // 3. Handle auth
@@ -134,8 +98,8 @@ export default function (pi: ExtensionAPI) {
         }
       }
 
-      // 4. Create empty subdirectories for department-specific data
-      for (const sub of ["skills", "agents", "sessions", "memory", "git"]) {
+      // 4. Create empty subdirectories for everything else
+      for (const sub of ["extensions", "skills", "agents", "sessions", "memory", "git"]) {
         mkdirSync(join(agentDir, sub), { recursive: true });
       }
 
@@ -178,14 +142,16 @@ exec pi "$@"
         `  ${verified ? "✓ Verified: pi " + verifyMsg : "⚠ " + verifyMsg}`,
         ``,
         `  Copied from main agent:`,
-        `    • settings.json, models.json, orchestrator.json`,
-        `    • extensions/`,
+        `    • models.json`,
         `    • skills/`,
         ``,
         `  Created fresh for this department:`,
-        `    • agents/      (add department-specific agents here)`,
-        `    • sessions/    (separate session history)`,
-        `    • memory/      (separate memory store)`,
+        `    • settings.json  (pi generates a default one on first run)`,
+        `    • extensions/`,
+        `    • agents/`,
+        `    • sessions/`,
+        `    • memory/`,
+        `    • git/`,
         ``,
       ].join("\n");
 

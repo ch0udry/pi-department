@@ -6,17 +6,16 @@ Create isolated Pi profile agents ("departments") from your main agent configura
 
 The `/department` command creates a new Pi profile agent with its own:
 
-- **Config** — copied from your main `~/.pi/agent`
+- **models.json** — copied from your main agent
+- **skills/** — copied from your main agent
 - **Auth** — symlinked by default (or isolated with `--isolated-auth`)
-- **Sessions** — separate session history per department
-- **Memory** — separate memory store per department
-- **Extensions/Skills/Agents** — fresh directories for department-specific additions
+- **Everything else** — starts fresh (separate sessions, memory, extensions, agents, git packages)
 - **Launcher** — a `~/.local/bin/pi-<name>` script so you can run it by just typing the name
 
 ## Installation
 
 ```bash
-pi install git:github.com/<your-username>/pi-department
+pi install git:github.com/ch0udry/pi-department
 ```
 
 Then reload pi with `/reload`.
@@ -41,26 +40,18 @@ pi-dev      # Launches the dev department
 pi-research # Launches the research department
 ```
 
-Or set the environment variable directly:
-
-```bash
-PI_CODING_AGENT_DIR="$HOME/.pi/profiles/pi-dev/.pi/agent" pi
-```
-
 ## How it works
 
-Each department lives at `~/.pi/profiles/pi-<name>/` and contains:
+Each department lives at `~/.pi/profiles/pi-<name>/` and starts clean:
 
 ```
 ~/.pi/profiles/pi-<name>/
 └── .pi/
     └── agent/
-        ├── settings.json    # Copied from main agent
         ├── models.json      # Copied from main agent
-        ├── orchestrator.json # Copied from main agent
         ├── auth.json        # Symlinked to main (or isolated)
-        ├── extensions/      # Copied from main agent
         ├── skills/          # Copied from main agent
+        ├── extensions/      # Fresh
         ├── agents/          # Fresh
         ├── sessions/        # Fresh — separate session history
         ├── memory/          # Fresh — separate memory
