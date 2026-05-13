@@ -1,0 +1,10 @@
+{
+  "name": "pi-department",
+  "version": "1.0.0",
+  "description": "Pi extension to create isolated profile agents (departments) from your main agent config",
+  "keywords": ["pi-package", "pi-extension", "department", "profile", "multi-agent"],
+  "license": "MIT",
+  "pi": {
+    "extensions": ["./extensions"]
+  }
+}
